@@ -1,12 +1,14 @@
 #ifndef COLORDETECTER_H_
 #define COLORDETECTER_H_
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 class colorDetecter
 {
 private:
 	cv::Mat image_;
 	char detectedColor_;
-	int minLen_;
+	double minLen_;
 	int minh_, maxh_;
 	int mins_, maxs_;
 	int minv_, maxv_;
@@ -21,7 +23,7 @@ private:
 public:
 	colorDetecter();        //defualt constructor
 
-	colorDetecter(cv::Mat image, int minLen, double horizontal_fov);
+	colorDetecter(cv::Mat image, double minLen = 80, double horizontal_fov = 90);
 
 	/**
 	 *  @brief  Help you query the color information corresponding to the character
@@ -49,8 +51,9 @@ public:
 	 *                  'G': green
 	 *                  'B': black
 	 *  @param  minLen: The minimum value of the target color's perimeter
+	 *  @param  runMode: R！！Release  D！！Debug
 	 */
-	bool process(char targetColor, int minLen);
+	bool process(char targetColor, char runMode = 'R', double minLen = 80);
 };
 #endif
 

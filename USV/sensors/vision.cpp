@@ -1,6 +1,7 @@
 #include "../sensors_include/vision.h"
 
 #include <iostream>
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -9,7 +10,7 @@ colorDetecter::colorDetecter()       //defualt constructor
 
 }
 
-colorDetecter::colorDetecter(cv::Mat image, int minLen = 0, double horizontal_fov = 115)
+colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov)
 {
 	image_ = image;
 	minLen_ = minLen;
@@ -54,19 +55,20 @@ void colorDetecter::dealColor(char targetColor)
 		break;
 	case 'R':	//red
 		minh_ = 0;
-		maxh_ = 6;
-		mins_ = 35;
-		maxs_ = 200;
-		minv_ = 35;
-		maxv_ = 200;
+		maxh_ = 10;
+		mins_ = 120;
+		maxs_ = 255;
+		minv_ = 50;
+		maxv_ = 255;
 		break;
 	case 'r':	//red
-		minh_ = 162;
+		minh_ = 156;
 		maxh_ = 179;
-		mins_ = 35;
-		maxs_ = 200;
-		minv_ = 35;
-		maxv_ = 200;
+		mins_ = 100;
+		maxs_ = 255;
+		minv_ = 50;
+		maxv_ = 255;
+		break;
 	case 'O':	//orange
 		minh_ = 11;
 		maxh_ = 25;
@@ -86,7 +88,7 @@ void colorDetecter::dealColor(char targetColor)
 	case 'G':	//green
 		minh_ = 35;
 		maxh_ = 77;
-		mins_ = 43;
+		mins_ = 100;
 		maxs_ = 255;
 		minv_ = 46;
 		maxv_ = 255;
@@ -94,7 +96,7 @@ void colorDetecter::dealColor(char targetColor)
 	case 'L':	//blue
 		minh_ = 100;
 		maxh_ = 124;
-		mins_ = 43;
+		mins_ = 100;
 		maxs_ = 255;
 		minv_ = 46;
 		maxv_ = 255;
@@ -128,6 +130,7 @@ void colorDetecter::helpText()
 	cout << "P¡ª¡ªPurple\n";
 	cout << "Please enter the letter corresponding to the target color:";
 }
+
 void colorDetecter::set_FOV(double horizontal_fov)
 {
 
@@ -152,30 +155,26 @@ double colorDetecter::get_angle()
 	return angle_;
 }
 
-bool colorDetecter::process(char targetColor, int minLen)
+bool colorDetecter::process(char targetColor, char runMode, double minLen)
 {
 	using namespace cv;
 	if (minLen < 0)
 	{
-		std::cout << "Please enter the letter corresponding to the target color\n";
-		return;
+		std::cout << "Please enter the letter corresponding to the target color.\n";
+		return false;
 	}
 	else
 		minLen_ = minLen;
 
-	int len = 0;
-	int maxLen = 0;
-	int index;
-
+	double len = 0;
+	double maxLen = 0;
+	int index = 0;
 	cv::Mat mask;
-	//cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
 
 	cv::Mat img_Blur;
 	cv::GaussianBlur(image_, img_Blur, cv::Size(3, 3), 0, 0);
-
-	Mat fhsv;
+	cv::Mat fhsv;
 	cvtColor(img_Blur, fhsv, COLOR_BGR2HSV);
-
 
 	if ('H' == targetColor)
 	{
@@ -192,14 +191,15 @@ bool colorDetecter::process(char targetColor, int minLen)
 		dealColor(targetColor);
 		cv::inRange(fhsv, Scalar(minh_, mins_, minv_), Scalar(maxh_, maxs_, maxv_), mask);
 	}
+	//imshow("mask", mask);
 
-	Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5), Point(-1, -1));
-	morphologyEx(mask, mask, MORPH_OPEN, kernel, Point(-1, -1), 1);
-	std::vector< std::vector<cv::Point2d>> contours;
-	findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
+	Mat kernel = cv::getStructuringElement(MORPH_RECT, Size(5, 5), Point(-1, -1));
+	cv::morphologyEx(mask, mask, MORPH_OPEN, kernel, Point(-1, -1), 1);
+	std::vector< std::vector<cv::Point>> contours;
+	cv::findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 	//cout << "The number of contours: " << contours.size() << endl;
-	for (size_t t = 0; t < contours.size(); t++)
-		if (maxLen <= (len = arcLength(contours[t], true)))
+	for (int t = 0; t < contours.size(); t++)
+		if (maxLen <= (len = cv::arcLength(contours[t], true)))
 		{
 			maxLen = len;
 			index = t;
@@ -207,16 +207,20 @@ bool colorDetecter::process(char targetColor, int minLen)
 
 	if (maxLen < minLen_)
 	{
-		detectedColor_ = 'N';
+		detectedColor_ = 'N';	// find no target color
 		return false;
 	}
 	else
 	{
-		//drawContours(result, contours, static_cast<int>(index), Scalar(0, 255, 0), 2, 8);
 		float radius;
-		minEnclosingCircle(contours[index], Center_, radius);
-		//circle(result, Center_, radius, Scalar(0, 0, 255), 1);
-
+		cv::minEnclosingCircle(contours[index], Center_, radius);
+		if ('D' == runMode)
+		{
+			cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
+			cv::drawContours(result, contours, index, Scalar(0, 255, 0), 2, 8);
+			cv::circle(result, (cv::Point)Center_, (int)radius, Scalar(0, 0, 255), 1);
+			cv::imshow("result", result);
+		}
 		detectedColor_ = targetColor;
 		return true;
 	}
