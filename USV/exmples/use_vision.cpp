@@ -13,7 +13,8 @@ int main() {
 	Mat image = imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\Red.jpg");
 	imshow("image", image);
 	colorDetecter red_color_det(image);
-	if (red_color_det.process('H', 'D'))
+
+	if (red_color_det.process(colorDetecter::runMode::debug))
 	{
 		angle = red_color_det.get_angle();
 		det_color = red_color_det.get_detectedColor();
