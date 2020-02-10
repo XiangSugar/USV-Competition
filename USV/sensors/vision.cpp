@@ -19,9 +19,9 @@ colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov
 	horizontal_fov_ = horizontal_fov;
 	angle_ = 0.0;
 	img_size_ = cv::Size(image.cols, image.rows);
-	Center_ = cv::Point2d(0.0, 0.0);
-	Center1_ = cv::Point2d(0.0, 0.0);
-	Center1_ = cv::Point2d(0.0, 0.0);
+	Center_ = cv::Point2f(0.0, 0.0);
+	Center1_ = cv::Point2f(0.0, 0.0);
+	Center2_ = cv::Point2f(0.0, 0.0);
 }
 
 void colorDetecter::get_color_range(char targetColor)
@@ -89,7 +89,7 @@ void colorDetecter::get_color_range(char targetColor)
 	case 'L':	//blue
 		minh_ = 100;
 		maxh_ = 124;
-		mins_ = 100;
+		mins_ = 135;
 		maxs_ = 255;
 		minv_ = 46;
 		maxv_ = 255;
@@ -183,8 +183,8 @@ void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Po
 	cv::circle(result, center, (int)radius, cv::Scalar(0, 0, 255), 1);
 }
 
-void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, float & radius1,
-	float & radius2)
+void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
+	float & radius1, float & radius2)
 {
 	cv::drawContours(result, contours, 0, cv::Scalar(0, 255, 0), 2, 8);
 	cv::circle(result, (cv::Point)Center1_, (int)radius1, cv::Scalar(0, 0, 255), 1);
@@ -216,114 +216,144 @@ int colorDetecter::find_maxLen(double * maxlen)
 	return index;
 }
 
-int colorDetecter::process(char targetColor, runMode runmode, double minLen)
+int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, double minLen)
 {
 	using namespace cv;
 	int state = 0;
 
-	if (targetColor != 'G')
+	if (!targetColor)
 	{
-		std::cout << "Please enter the right letter('G') corresponding to the target color(green).\n";
-		return false;
+		std::cout << "Please enter the right letter corresponding to the target color.\n";
+		return -1;
 	}
 	if (minLen < 0)
 	{
 		std::cout << "ERROR: The param @minLen must be positive.\n";
-		return false;
+		return -1;
 	}
 	else
 		minLen_ = minLen;
 
-	double len = 0;
-	cv::Mat mask;
-
 	cv::Mat img_Blur;
 	cv::GaussianBlur(image_, img_Blur, cv::Size(3, 3), 0, 0);
 	cv::Mat fhsv;
-	cvtColor(img_Blur, fhsv, COLOR_BGR2HSV);
-
-	get_color_mask('G', fhsv, mask);
+	cv::cvtColor(img_Blur, fhsv, COLOR_BGR2HSV);
+	cv::Mat mask;
+	get_color_mask(targetColor, fhsv, mask);
 	//imshow("mask", mask);
+	
 	std::vector<std::vector<cv::Point>> contours;
-	cv::findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-
-	//calculate the length of each contour
-	int size = contours.size();
-	std::vector<double>  contour_size;
-	for (int i = 0; i < size; i++)
+	if ('G' == targetColor)
 	{
-		len = cv::arcLength(contours[i], true);
-		contour_size.push_back(len);
-	}
+		double len = 0;
+		cv::findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
 
-	float radius1;
-	float radius2;
-
-	if (1 == size && (contour_size[0] > minLen_))
-	{
-		cv::minEnclosingCircle(contours[0], Center1_, radius1);
-		state = 1;
-	}
-	else if (size > 1)
-	{
-		// sort by contour's size in descending order
-		cv::vector<cv::Point> temp_Contour;
+		//calculate the length of each contour
+		int size = contours.size();
+		std::vector<double>  contour_size;
 		for (int i = 0; i < size; i++)
 		{
-			for (int j = size - 1; j > i; j--)
-			{
-				if (contour_size[j] > contour_size[j - 1])
-				{
-					temp_Contour = contours[j];
-					contours[j] = contours[j - 1];
-					contours[j - 1] = temp_Contour;
-				}
-			}
+			len = cv::arcLength(contours[i], true);
+			contour_size.push_back(len);
 		}
-		int count_1 = 0;
-		int count_2 = 0;
+		float radius1;
+		float radius2;
 
-		if (contour_size[0] > minLen_)
+		if (1 == size && (contour_size[0] > minLen_))
 		{
 			cv::minEnclosingCircle(contours[0], Center1_, radius1);
-			count_1++;
-		}
-		if (contour_size[1] > minLen_)
-		{
-			cv::minEnclosingCircle(contours[1], Center2_, radius2);
-			count_2++;
-		}
-		if (1 == count_1 && 1 == count_2)
-			state = 2;
-		else if (1 == count_1)
 			state = 1;
-		else if (1 == count_2)
+			detectedColor_ = targetColor;
+		}
+		else if (size > 1)
 		{
-			Center1_ = Center2_;
-			radius1 = radius2;
-			state = 1;
+			// sort by contour's size in descending order
+			cv::vector<cv::Point> temp_Contour;
+			double temp_contour_size;
+			for (int i = 0; i < size; i++)
+			{
+				for (int j = size - 1; j > i; j--)
+				{
+					if (contour_size[j] > contour_size[j - 1])
+					{
+						//for contour_size
+						temp_contour_size = contour_size[j];
+						contour_size[j] = contour_size[j - 1];
+						contour_size[j - 1] = temp_contour_size;
+						//for contours
+						temp_Contour = contours[j];
+						contours[j] = contours[j - 1];
+						contours[j - 1] = temp_Contour;
+					}
+				}
+			}
+
+			if (contour_size[0] > minLen_)
+			{
+				cv::minEnclosingCircle(contours[0], Center1_, radius1);
+				if (contour_size[1] > minLen_)
+				{
+					cv::minEnclosingCircle(contours[1], Center2_, radius2);
+					state = 2;
+				}
+				else
+					state = 1;
+				detectedColor_ = targetColor;
+			}
+			else
+				state = 0;
 		}
 		else
 			state = 0;
+
+		if (debug == runmode)
+		{
+			//cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
+			if (2 == state)
+				draw_result(result, contours, radius1, radius2);
+			else if (1 == state)
+				draw_result(result, contours, 0, Center1_, radius1);
+			else
+				;
+			//cv::imshow("result", result);
+			/* for debug
+			cv::imshow("mask", mask);
+			*/
+		}
+		return state;
+
 	}
 	else
-		state = 0;
-
-	if (debug == runmode)
 	{
-		cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
-		if (2 == state)
-			draw_result(result, contours, radius1, radius2);
-		else if (1 == state)
-			draw_result(result, contours, 0, Center1_, radius1);
+		int index;
+		double maxLen = 0;
+		find_longest_contour(mask, contours, maxLen, index);
+		if (maxLen < minLen_)
+		{
+			detectedColor_ = 'N';	// find no target color
+			return -1;
+		}
 		else
-			;
-		cv::imshow("result", result);
+		{
+			float radius;
+			cv::minEnclosingCircle(contours, Center_, radius);
+			detectedColor_ = targetColor;
+
+			if (debug == runmode)
+			{
+				draw_result(result, contours, index, Center_, radius);
+				/* for debug
+				cv::imshow("mask", mask);
+				*/
+			}
+			return 0;
+		}
 	}
-	return state;
 }
 
-int colorDetecter::process(runMode runmode, double minLen)
+
+// 可以将三种颜色的检测轮廓都画出来  计算三个角度
+int colorDetecter::process(cv::Mat & result, runMode runmode, double minLen)
 {
 	using namespace cv;
 	if (minLen < 0)
@@ -359,14 +389,14 @@ int colorDetecter::process(runMode runmode, double minLen)
 	find_longest_contour(mask_L, contours_L, maxLen_L, index_L);
 
 	double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
+	/* for debug
 	int j = 0;
-	while (j < 3)
-	{
+	while (j < 3) {
 		std::cout << maxlen[j] << std::endl;
 		j++;
 	}
+	*/
 	index = find_maxLen(maxlen);
-	
 	if (maxlen[index] < minLen_)
 	{
 		detectedColor_ = 'N';	// find no target color
@@ -394,7 +424,6 @@ int colorDetecter::process(runMode runmode, double minLen)
 			std::cout << "Error index!" << std::endl;
 		if (debug == runmode)
 		{
-			cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
 			if (0 == index)
 				draw_result(result, contours_H, index_H, Center_, radius);
 			else if (1 == index)
@@ -404,10 +433,11 @@ int colorDetecter::process(runMode runmode, double minLen)
 			else
 				std::cout << "Error index!" << std::endl;
 
-			cv::imshow("result", result);
+			/* for debug
 			cv::imshow("mask_H", mask_H);
 			cv::imshow("mask_B", mask_B);
 			cv::imshow("mask_L", mask_L);
+			*/
 		}
 		return 1;
 	}

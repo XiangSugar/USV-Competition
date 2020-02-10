@@ -120,7 +120,7 @@
     <ClInclude Include="sensors_include\vision.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="exmples\use_vision.cpp" />
+    <ClCompile Include="examples\example_vision.cpp" />
     <ClCompile Include="sensors\vision.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

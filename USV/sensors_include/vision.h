@@ -74,31 +74,35 @@ public:
 	int find_maxLen(double * maxlen);
 
 	/**
- 	 *  @brief  Check the target color(here is green) in a picture, be used in the
-	    beginning and the end stages. If only one green ball is detected, the
-		results will be stored in Center1_ and radius1. If two green ball are
-		both detected, the results will be stored in both Center1_ and Center2_,
-		as well as the radius1 and radius2.
-		return value: 0 ！！ no green ball detected
-					  1 ！！ one green ball detected
-					  2 ！！ two green ball detected
+ 	 *  @brief  Check the target color in a picture. 
+	    If only one green ball is detected, the results will be
+		stored in Center1_ and radius1. If two green ball are
+		both detected, the results will be stored in both Center1_
+		and Center2_, as well as the radius1 and radius2. Other
+		color's detection result will be stored in Center_ and radius
+		return value: -1 ！！ no target color detected or something wrong
+					   0 ！！ target color detected (not green)
+					   1 ！！ one green ball detected
+					   2 ！！ two green ball detected
 	 *  @param  targetColor: The target color that you want to check
 	 *                  'H': red
 	 *                  'L': blue
 	 *                  'G': green
 	 *                  'B': black
+	 *  @param  result: a Mat data to show the origin image with the detection result
 	 *  @param  runmode: release  debug
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(char targetColor, runMode runmode = release, double minLen = 80);
+	int process(char targetColor, cv::Mat & result, runMode runmode = release, double minLen = 50);
 
 	/**
-	 *  @brief  overload function: detect red、blue and black at the same time.
-	    Be used in the intermediate stages.
+	 *  @brief  overload function: detect red、blue and black at the same time, and the biggest one will
+	    be seen as the detection result. Be used in the intermediate stages.
+	 *  @param  result: a Mat data to show the origin image with the detection result
 	 *  @param  runmode: release  debug
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(runMode runmode = release, double minLen = 80);
+	int process(cv::Mat & result, runMode runmode = release, double minLen = 50);
 };
 #endif
 

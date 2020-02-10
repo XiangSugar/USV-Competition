@@ -23,7 +23,7 @@
     <ClCompile Include="sensors\vision.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="exmples\use_vision.cpp">
+    <ClCompile Include="examples\example_vision.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
