@@ -22,6 +22,13 @@ colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov
 	Center_ = cv::Point2f(0.0, 0.0);
 	Center1_ = cv::Point2f(0.0, 0.0);
 	Center2_ = cv::Point2f(0.0, 0.0);
+	
+	for (int i = 0; i < 3; i++) {
+		mu_Angle_[i] = 0.0;
+		mu_Center_[i] = cv::Point2f(0.0, 0.0);
+		detected_mu_Color_[i] = 'N';
+	}
+	detected_mu_Color_[3] = '\0';
 }
 
 void colorDetecter::get_color_range(char targetColor)
@@ -36,7 +43,7 @@ void colorDetecter::get_color_range(char targetColor)
 		mins_ = 0;
 		maxs_ = 255;
 		minv_ = 0;
-		maxv_ = 55;
+		maxv_ = 50;
 		break;
 	case 'W':	//white
 		minh_ = 0;
@@ -89,7 +96,7 @@ void colorDetecter::get_color_range(char targetColor)
 	case 'L':	//blue
 		minh_ = 100;
 		maxh_ = 124;
-		mins_ = 135;
+		mins_ = 130;
 		maxs_ = 255;
 		minv_ = 46;
 		maxv_ = 255;
@@ -137,6 +144,12 @@ char  colorDetecter::get_detectedColor() const
 	return detectedColor_;
 }
 
+char * colorDetecter::get_mu_detectedColor() const
+{
+	//TO DO
+	return (char *)detected_mu_Color_;
+}
+
 double colorDetecter::get_angle(int flag)
 {
 	double hw = img_size_.width / 2.0;
@@ -153,6 +166,15 @@ double colorDetecter::get_angle(int flag)
 		return 0;
 	}
 	return angle_;
+}
+
+double * colorDetecter::get_mu_angle()
+{
+	double hw = img_size_.width / 2.0;
+	for (int i = 0; i < 3; i++)
+		mu_Angle_[i] = (hw - mu_Center_[i].x) / img_size_.width * horizontal_fov_;
+
+	return mu_Angle_;
 }
 
 void colorDetecter::get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask)
@@ -174,6 +196,7 @@ void colorDetecter::get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & m
 	}
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5), cv::Point(-1, -1));
 	cv::morphologyEx(mask, mask, cv::MORPH_OPEN, kernel, cv::Point(-1, -1), 1);
+	//cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, kernel, cv::Point(-1, -1), 1);
 }
 
 void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
@@ -306,7 +329,7 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 		else
 			state = 0;
 
-		if (debug == runmode)
+		if (DEBUG == runmode)
 		{
 			//cv::Mat result = cv::Mat::zeros(img_size_, CV_8UC3);
 			if (2 == state)
@@ -339,7 +362,7 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 			cv::minEnclosingCircle(contours, Center_, radius);
 			detectedColor_ = targetColor;
 
-			if (debug == runmode)
+			if (DEBUG == runmode)
 			{
 				draw_result(result, contours, index, Center_, radius);
 				/* for debug
@@ -352,8 +375,7 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 }
 
 
-// 可以将三种颜色的检测轮廓都画出来  计算三个角度
-int colorDetecter::process(cv::Mat & result, runMode runmode, double minLen)
+int colorDetecter::process(cv::Mat & result, runMode runmode, clrMode clrmode, double minLen)
 {
 	using namespace cv;
 	if (minLen < 0)
@@ -365,7 +387,6 @@ int colorDetecter::process(cv::Mat & result, runMode runmode, double minLen)
 		minLen_ = minLen;
 
 	double len = 0;
-	cv::Mat fhsv;
 	int index = 0;
 	double maxLen_H = 0;
 	double maxLen_B = 0;
@@ -373,6 +394,7 @@ int colorDetecter::process(cv::Mat & result, runMode runmode, double minLen)
 	int index_H = 0;
 	int index_B = 0;
 	int index_L = 0;
+	cv::Mat fhsv;
 	cv::Mat mask_H;
 	cv::Mat mask_B;
 	cv::Mat mask_L;
@@ -388,58 +410,108 @@ int colorDetecter::process(cv::Mat & result, runMode runmode, double minLen)
 	get_color_mask('L', fhsv, mask_L);
 	find_longest_contour(mask_L, contours_L, maxLen_L, index_L);
 
-	double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
-	/* for debug
-	int j = 0;
-	while (j < 3) {
-		std::cout << maxlen[j] << std::endl;
-		j++;
-	}
-	*/
-	index = find_maxLen(maxlen);
-	if (maxlen[index] < minLen_)
+	if (SGL == clrmode)
 	{
-		detectedColor_ = 'N';	// find no target color
-		return 0;
+		double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
+		index = find_maxLen(maxlen);
+		if (maxlen[index] < minLen_)
+		{
+			detectedColor_ = 'N';	// find no target color
+			return 0;
+		}
+		else
+		{
+			float radius;
+			if (0 == index)
+			{
+				cv::minEnclosingCircle(contours_H[index_H], Center_, radius);
+				detectedColor_ = 'H';
+			}
+			else if (1 == index)
+			{
+				cv::minEnclosingCircle(contours_B[index_B], Center_, radius);
+				detectedColor_ = 'B';
+			}
+			else if (2 == index)
+			{
+				cv::minEnclosingCircle(contours_L[index_L], Center_, radius);
+				detectedColor_ = 'L';
+			}
+			else
+				std::cout << "Error index!" << std::endl;
+			if (DEBUG == runmode)
+			{
+				if (0 == index)
+					draw_result(result, contours_H, index_H, Center_, radius);
+				else if (1 == index)
+					draw_result(result, contours_B, index_B, Center_, radius);
+				else if (2 == index)
+					draw_result(result, contours_L, index_L, Center_, radius);
+				else
+					std::cout << "Error index!" << std::endl;
+
+				/* for debug
+				cv::imshow("mask_H", mask_H);
+				cv::imshow("mask_B", mask_B);
+				cv::imshow("mask_L", mask_L);
+				*/
+			}
+			return 1;
+		}
+
+	}
+	else if (MU == clrmode)
+	{
+		float radius_set[3] = { 0, 0, 0 };
+		std::vector<std::vector<cv::Point>> contours_set[3] = { contours_H, contours_B, contours_L };
+		double maxLen_set[3] = { maxLen_H, maxLen_B, maxLen_L };
+		int index_set[3] = { index_H, index_B, index_L };
+		int count = 0;
+		char color_set[3] = { 'H', 'B', 'L' };
+		
+		int i = 0;
+		while (i < 3)
+		{
+			if (maxLen_set[i] < minLen_)
+				detected_mu_Color_[i] = 'N';
+			else
+			{
+				cv::minEnclosingCircle(contours_set[i][index_set[i]], mu_Center_[i], radius_set[i]);
+				detected_mu_Color_[i] = color_set[i];
+				count++;
+			}
+			i++;
+		}
+		if (count)
+		{
+			if (DEBUG == runmode)
+			{
+				int i = 0;
+				while (i < 3)
+				{
+					if (maxLen_set[i] > minLen_)
+						draw_result(result, contours_set[i], index_set[i], mu_Center_[i], radius_set[i]);
+					i++;
+				}
+			
+				/* for debug
+				cv::imshow("mask_H", mask_H);
+				cv::imshow("mask_B", mask_B);
+				cv::imshow("mask_L", mask_L);
+				*/
+			}
+			return 1;
+		}
+		else
+		{
+			std::cout << "No color detected!" << std::endl;
+			return 0;
+		}
 	}
 	else
 	{
-		float radius;
-		if (0 == index)
-		{
-			cv::minEnclosingCircle(contours_H[index_H], Center_, radius);
-			detectedColor_ = 'H';
-		}
-		else if (1 == index)
-		{
-			cv::minEnclosingCircle(contours_B[index_B], Center_, radius);
-			detectedColor_ = 'B';
-		}
-		else if (2 == index)
-		{
-			cv::minEnclosingCircle(contours_L[index_L], Center_, radius);
-			detectedColor_ = 'L';
-		}
-		else
-			std::cout << "Error index!" << std::endl;
-		if (debug == runmode)
-		{
-			if (0 == index)
-				draw_result(result, contours_H, index_H, Center_, radius);
-			else if (1 == index)
-				draw_result(result, contours_B, index_B, Center_, radius);
-			else if (2 == index)
-				draw_result(result, contours_L, index_L, Center_, radius);
-			else
-				std::cout << "Error index!" << std::endl;
-
-			/* for debug
-			cv::imshow("mask_H", mask_H);
-			cv::imshow("mask_B", mask_B);
-			cv::imshow("mask_L", mask_L);
-			*/
-		}
-		return 1;
-	}
+		std::cout << "Error: clrMode should be SGL or MU!" << std::endl;
+		return 0;
+	}	
 }
 

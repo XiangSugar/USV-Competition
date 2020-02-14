@@ -10,12 +10,14 @@ class colorDetecter
 private:
 	cv::Mat image_;
 	char detectedColor_;
+	char detected_mu_Color_[4];
 	double minLen_;
 	int minh_, maxh_;
 	int mins_, maxs_;
 	int minv_, maxv_;
 	double horizontal_fov_;
 	double angle_;
+	double mu_Angle_[3];
 	cv::Size img_size_;
 
 	//  Center_ will be calculated in the process function without targetColor param
@@ -25,8 +27,11 @@ private:
 	// which will be calculated in the process function with targetColor param
 	cv::Point2f Center1_;
 	cv::Point2f Center2_;
+	//for MU colMode
+	cv::Point2f mu_Center_[3];
 public:
-	enum runMode {debug, release};
+	enum runMode {DEBUG, RELEASE};
+	enum clrMode {SGL, MU};
 
 private:
 	void get_color_range(char targetColor);
@@ -51,13 +56,16 @@ public:
 	 */
 	char get_detectedColor() const;
 
+	char * get_mu_detectedColor() const;
+
 	/**
 	 *  @brief  Gets the orientation information of the target color
 	 */
 	double get_angle(int flag = 0);
+	double * get_mu_angle();
 
 	/**
-	 *  @brief get mask of the terget color
+	 *  @brief get mask of the target color
 	 */
 	void get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask);
 
@@ -93,16 +101,21 @@ public:
 	 *  @param  runmode: release  debug
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(char targetColor, cv::Mat & result, runMode runmode = release, double minLen = 50);
+	int process(char targetColor, cv::Mat & result, runMode runmode = RELEASE, double minLen = 50);
 
 	/**
-	 *  @brief  overload function: detect red、blue and black at the same time, and the biggest one will
-	    be seen as the detection result. Be used in the intermediate stages.
+	 *  @brief  overload function: detect red、blue and black at the same time.The biggest one will
+	    be seen as the detection result under SGN mode, but all of the three color detection result
+		will be seen as the final result under the MU mode. Be used in the intermediate stages.
 	 *  @param  result: a Mat data to show the origin image with the detection result
-	 *  @param  runmode: release  debug
+	 *  @param  runmode: RELEASE  DEBUG
+	 *  @param  clrMode: control the color detection mode
+					SGL: only the detection result of the biggest color will be stored in Center_
+					 MU: detection result of each color(red、black、blue) will be stored by order in 
+						 mu_Center_[3], once it can be detected
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(cv::Mat & result, runMode runmode = release, double minLen = 50);
+	int process(cv::Mat & result, runMode runmode = RELEASE, clrMode clrmode = SGL, double minLen = 50);
 };
 #endif
 
