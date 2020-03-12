@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 //#include <opencv2/imgproc/imgproc.hpp>
 //#include <opencv2/highgui/highgui.hpp>
-#include <vector>
+//#include <vector>
 
 colorDetecter::colorDetecter()       //defualt constructor
 {
@@ -177,6 +177,9 @@ double * colorDetecter::get_mu_angle()
 	return mu_Angle_;
 }
 
+//void colorDetecter::equalizeHist_clr(cv::Mat image)
+//{}
+
 void colorDetecter::get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask)
 {
 	if ('H' == targetColor)
@@ -230,7 +233,7 @@ void colorDetecter::find_longest_contour(cv::Mat & mask, std::vector<std::vector
 		}
 }
 
-int colorDetecter::find_maxLen(double * maxlen)
+int colorDetecter::find_maxLen_index(double * maxlen)
 {
 	int index = 0;
 	for (int i = 0; i < 3; i++)
@@ -239,7 +242,7 @@ int colorDetecter::find_maxLen(double * maxlen)
 	return index;
 }
 
-int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, double minLen)
+int colorDetecter::process_clr(char targetColor, cv::Mat & result, runMode runmode, double minLen)
 {
 	using namespace cv;
 	int state = 0;
@@ -291,7 +294,8 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 		else if (size > 1)
 		{
 			// sort by contour's size in descending order
-			cv::vector<cv::Point> temp_Contour;
+			// TO DO: can be replaced by a function
+			std::vector<cv::Point> temp_Contour;
 			double temp_contour_size;
 			for (int i = 0; i < size; i++)
 			{
@@ -344,7 +348,6 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 			*/
 		}
 		return state;
-
 	}
 	else
 	{
@@ -359,7 +362,7 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 		else
 		{
 			float radius;
-			cv::minEnclosingCircle(contours, Center_, radius);
+			cv::minEnclosingCircle(contours[index], Center_, radius);
 			detectedColor_ = targetColor;
 
 			if (DEBUG == runmode)
@@ -375,7 +378,7 @@ int colorDetecter::process(char targetColor, cv::Mat & result, runMode runmode, 
 }
 
 
-int colorDetecter::process(cv::Mat & result, runMode runmode, clrMode clrmode, double minLen)
+int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clrmode, double minLen)
 {
 	using namespace cv;
 	if (minLen < 0)
@@ -413,7 +416,7 @@ int colorDetecter::process(cv::Mat & result, runMode runmode, clrMode clrmode, d
 	if (SGL == clrmode)
 	{
 		double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
-		index = find_maxLen(maxlen);
+		index = find_maxLen_index(maxlen);
 		if (maxlen[index] < minLen_)
 		{
 			detectedColor_ = 'N';	// find no target color
@@ -515,3 +518,173 @@ int colorDetecter::process(cv::Mat & result, runMode runmode, clrMode clrmode, d
 	}	
 }
 
+
+// class hazeMove
+
+hazeMove::hazeMove()
+{
+	for (int i = 0; i < 3; i++)
+		outA_[i] = float(0.0);
+	win_size_ = 15;
+	r_ = 60;
+	eps_ = 0.001;
+	omega_ = 0.95;
+	tx_ = 0.1;
+}
+hazeMove::hazeMove(cv::Mat image)
+{
+	src_ = image;
+	img_h_ = image.rows;
+	img_w_ = image.cols;
+	dark_ = cv::Mat(img_h_, img_w_, CV_32FC1);
+	te_ = cv::Mat(img_h_, img_w_, CV_32FC1);
+	t_ = cv::Mat(img_h_, img_w_, CV_32FC1);
+	for (int i = 0; i < 3; i++)
+		outA_[i] = float(0.0);
+	win_size_ = 25;
+	r_ = 60;
+	eps_ = 0.001;
+	omega_ = 0.95;
+	tx_ = 0.1;
+}
+hazeMove::~hazeMove()
+{
+}
+
+template<typename T> 
+std::vector<int> hazeMove::argsort(const std::vector<T>& array)
+{
+	const int array_len(array.size());
+	std::vector<int> array_index(array_len, 0);
+	for (int i = 0; i < array_len; ++i)
+		array_index[i] = i;
+
+	std::sort(array_index.begin(), array_index.end(),
+		[&array](int pos1, int pos2) {return (array[pos1] < array[pos2]); });
+
+	return array_index;
+}
+
+cv::Mat hazeMove::DarkChannel(cv::Mat img) const
+{
+	std::vector<cv::Mat> chanels(3);
+	split(img, chanels);
+
+	//求RGB三通道中的最小像像素值
+	cv::Mat minChannel = (cv::min)((cv::min)(chanels[0], chanels[1]), chanels[2]);
+	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(win_size_, win_size_));
+
+	cv::Mat dark(img_h_, img_w_, CV_32FC1);
+	cv::erode(minChannel, dark, kernel);	//图像腐蚀(实际上就是何凯明算法中的最小值滤波)
+	return dark;
+}
+void hazeMove::AtmLight()
+{
+	int imgSize = img_h_ * img_w_;
+
+	//将暗图像和原图转为列向量
+	std::vector<int> darkVector = dark_.reshape(1, imgSize);
+	cv::Mat src = src_;
+	//将改变原有的数据，因此用原图的copy版来运算，防止原图被修改
+	cv::Mat srcVector = src.reshape(3, imgSize); 
+	//这个类型转换很有必要，前期就是在这里踩坑，很久才跳出来
+	srcVector.convertTo(srcVector, CV_32FC3);
+
+	//按照亮度的大小取前0.1%的像素（亮度高）
+	int numpx = int(cv::max(floor(imgSize / 1000), 1.0));
+	std::vector<int> indices = argsort(darkVector);
+	std::vector<int> dstIndices(indices.begin() + (imgSize - numpx), indices.end());
+
+	for (int i = 0; i < numpx; ++i)
+	{
+		outA_[0] += srcVector.at<cv::Vec3f>(dstIndices[i], 0)[0];
+		outA_[1] += srcVector.at<cv::Vec3f>(dstIndices[i], 0)[1];
+		outA_[2] += srcVector.at<cv::Vec3f>(dstIndices[i], 0)[2];
+	}
+
+	outA_[0] = cv::min(outA_[0] / numpx, float(225.0));
+	outA_[1] = cv::min(outA_[1] / numpx, float(225.0));
+	outA_[2] = cv::min(outA_[2] / numpx, float(225.0));
+}
+void hazeMove::TransmissionEstimate()
+{
+	cv::Mat imgA = cv::Mat::zeros(img_h_, img_w_, CV_32FC3);
+	cv::Mat img = src_;
+
+	//必须进行类型转换
+	img.convertTo(img, CV_32FC3);
+	std::vector<cv::Mat> chanels(CV_32FC1);
+	split(img, chanels);
+	for (int i = 0; i < 3; ++i)
+		chanels[i] = chanels[i] / outA_[i];
+
+	cv::merge(chanels, imgA);
+	te_ = 1 - omega_ * DarkChannel(imgA);	//计算透射率预估值
+}
+
+cv::Mat hazeMove::Guidedfilter(cv::Mat img_guid, cv::Mat te, int r, float eps) const
+{
+	cv::Mat meanI, meanT, meanIT, meanII, meanA, meanB;
+	cv::boxFilter(img_guid, meanI, CV_32F, cv::Size(r, r));
+	cv::boxFilter(te, meanT, CV_32F, cv::Size(r, r));
+	cv::boxFilter(img_guid.mul(te), meanIT, CV_32F, cv::Size(r, r));
+	cv::Mat covIT = meanIT - meanI.mul(meanT);
+
+	boxFilter(img_guid.mul(img_guid), meanII, CV_32F, cv::Size(r, r));
+	cv::Mat varI = meanII - meanI.mul(meanI);
+
+	cv::Mat a = covIT / (varI + eps);
+	cv::Mat b = meanT - a.mul(meanI);
+	boxFilter(a, meanA, CV_32F, cv::Size(r, r));
+	boxFilter(b, meanB, CV_32F, cv::Size(r, r));
+
+	cv::Mat t = meanA.mul(img_guid) + meanB;
+
+	return t;
+}
+
+void hazeMove::TransmissionRefine()
+{
+	cv::Mat gray;
+	cv::cvtColor(src_, gray, CV_BGR2GRAY);
+	gray.convertTo(gray, CV_32F);
+	gray /= 255;
+
+	t_ = Guidedfilter(gray, te_, r_, eps_);
+}
+
+cv::Mat hazeMove::Defogging()
+{
+	//TO DO
+	//---------------------
+	dark_ = DarkChannel(src_);
+	AtmLight();
+	TransmissionEstimate();
+	TransmissionRefine();
+	//---------------------
+
+	cv::Mat dst = cv::Mat::zeros(img_h_, img_w_, CV_32FC3);
+	cv::Mat t = (cv::max)(t_, tx_);				//设置阈值当投射图t 的值很小时，会导致图像整体向白场过度
+	
+	cv::Mat srcImg;
+	src_.convertTo(srcImg, CV_32F);
+	
+	std::vector<cv::Mat> chanels;
+	split(srcImg, chanels);
+	for (int i = 0; i < 3; ++i)
+		chanels[i] = (chanels[i] - outA_[i]) / t + outA_[i];
+	merge(chanels, dst);
+	
+	//类型转换很重要
+	dst.convertTo(dst, CV_8UC3);
+	return dst;
+}
+
+void hazeMove::SetParam(int win_size, int r, float eps, float omega, float tx)
+{
+	win_size_ = win_size;
+	r_ = r;
+	eps_ = eps;
+	omega_ = omega;
+	tx_ = tx;
+}

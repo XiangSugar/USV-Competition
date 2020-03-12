@@ -1,9 +1,11 @@
 #ifndef COLORDETECTER_H_
 #define COLORDETECTER_H_
+#include <iostream>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2\imgproc\types_c.h>
 
-namespace cv{ using std::vector; }
+//namespace cv{ using std::vector; }
 
 class colorDetecter
 {
@@ -36,6 +38,22 @@ public:
 private:
 	void get_color_range(char targetColor);
 
+	/**
+	 *  @brief get mask of the target color
+	 */
+	void get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask);
+
+	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, int index,
+		cv::Point center, float & radius);
+	// overload
+	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, float & radius1,
+		float & radius2);
+
+	void find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours, double & maxLen,
+		int & index);
+
+	int find_maxLen_index(double * maxlen);
+
 public:
 	colorDetecter();        //defualt constructor
 
@@ -59,35 +77,21 @@ public:
 	char * get_mu_detectedColor() const;
 
 	/**
-	 *  @brief  Gets the orientation information of the target color
+	 *  @brief  Get the orientation information of the target color
 	 */
 	double get_angle(int flag = 0);
 	double * get_mu_angle();
 
-	/**
-	 *  @brief get mask of the target color
-	 */
-	void get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask);
-
-	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, int index,
-		cv::Point center, float & radius);
-
-	// overload
-	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, float & radius1,
-		float & radius2);
-
-	void find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours, double & maxLen,
-		int & index);
-
-	int find_maxLen(double * maxlen);
+	//void equalizeHist_clr(cv::Mat image);
+	
 
 	/**
  	 *  @brief  Check the target color in a picture. 
 	    If only one green ball is detected, the results will be
-		stored in Center1_ and radius1. If two green ball are
+		stored in Center1_. If two green ball are
 		both detected, the results will be stored in both Center1_
-		and Center2_, as well as the radius1 and radius2. Other
-		color's detection result will be stored in Center_ and radius
+		and Center2_. Other color's detection result will be stored
+		in Center_.
 		return value: -1 ！！ no target color detected or something wrong
 					   0 ！！ target color detected (not green)
 					   1 ！！ one green ball detected
@@ -101,7 +105,7 @@ public:
 	 *  @param  runmode: release  debug
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(char targetColor, cv::Mat & result, runMode runmode = RELEASE, double minLen = 50);
+	int process_clr(char targetColor, cv::Mat & result, runMode runmode = RELEASE, double minLen = 50);
 
 	/**
 	 *  @brief  overload function: detect red、blue and black at the same time.The biggest one will
@@ -115,7 +119,52 @@ public:
 						 mu_Center_[3], once it can be detected
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process(cv::Mat & result, runMode runmode = RELEASE, clrMode clrmode = SGL, double minLen = 50);
+	int process_no_clr(cv::Mat & result, runMode runmode = RELEASE, clrMode clrmode = SGL, double minLen = 50);
 };
+
+
+class hazeMove
+{
+private:
+	cv::Mat src_;
+	cv::Mat dark_;
+	cv::Mat te_;
+	cv::Mat t_;
+	int img_h_, img_w_;
+	float outA_[3];
+	int win_size_;
+	int r_;
+	float eps_;
+	float omega_;
+	float tx_;
+
+	template<typename T>
+	std::vector<int> argsort(const std::vector<T>& array);
+	cv::Mat DarkChannel(cv::Mat img) const;
+	void AtmLight();
+	void TransmissionEstimate();
+	cv::Mat Guidedfilter(cv::Mat img_guid, cv::Mat te, int r, float eps) const;
+	void TransmissionRefine();
+
+public:
+	hazeMove();
+	hazeMove(cv::Mat image);
+	~hazeMove();	
+	cv::Mat Defogging();
+	void ShowDark() { 
+		cv::imshow("Dark", dark_);
+	};
+	void ShowTe() { 
+		cv::imshow("te", te_);
+	};
+	void ShowT() { 
+		cv::imshow("t", t_);
+	};
+	void ShowA() { 
+		std::cout << outA_[0] << " " << outA_[1] << " " << outA_[2] << std::endl;
+	};
+	void SetParam(int win_size, int r, float eps, float omega, float tx);
+};
+
 #endif
 
