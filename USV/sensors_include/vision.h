@@ -131,25 +131,55 @@ private:
 	cv::Mat te_;
 	cv::Mat t_;
 	int img_h_, img_w_;
-	float outA_[3];
-	int win_size_;
-	int r_;
-	float eps_;
-	float omega_;
-	float tx_;
+	float outA_[3];		//Store atmospheric light intensity value of B¡¢G¡¢R channels
+	int win_size_;		//window size of minimum filtering algorithm
+	int r_;				//radius of guided filtering algorithm
+	float eps_;			//A parameter that prevents the dividend from
+						//being zero in the guided filtering algorithm
+	float omega_;		//Parameter that determines defog intensity (0,1)
+	float tx_;			//A parameter to prevent the image from shifting
+						//to the white field in the dark channel algorithm
 
+	/**
+		@brief  Returns the corresponding subscript value of the array elements in ascending
+		order, but does not change the array itself
+	 */
 	template<typename T>
 	std::vector<int> argsort(const std::vector<T>& array);
+
+	/**
+		@brief  get the dark channel of an image
+	 */
 	cv::Mat DarkChannel(cv::Mat img) const;
+
+	/**
+		@brief  Calculating the atmospheric light intensity of an image(outA_[3])
+	 */
 	void AtmLight();
+
+	/**
+		@brief  Calculating the estimated transmission(te_)
+	 */
 	void TransmissionEstimate();
+	
+	/**
+		@brief  guided filtering algorithm
+	 */
 	cv::Mat Guidedfilter(cv::Mat img_guid, cv::Mat te, int r, float eps) const;
+	/**
+		@brief  calculating transmission(t_) according to the estimated transmission(te_)
+	 */
 	void TransmissionRefine();
 
 public:
-	hazeMove();
+	hazeMove();		//defualt constructor
 	hazeMove(cv::Mat image);
-	~hazeMove();	
+	~hazeMove();
+
+	/**
+		@brief  defogging an image using the dark cahnnel algorithm£¬which is the
+		most representative classic defogging algorithm proposed by He Kaiming
+	 */
 	cv::Mat Defogging();
 	void ShowDark() { 
 		cv::imshow("Dark", dark_);

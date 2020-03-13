@@ -1,10 +1,6 @@
 #include "../sensors_include/vision.h"
-
 #include <iostream>
 #include <opencv2/opencv.hpp>
-//#include <opencv2/imgproc/imgproc.hpp>
-//#include <opencv2/highgui/highgui.hpp>
-//#include <vector>
 
 colorDetecter::colorDetecter()       //defualt constructor
 {
@@ -544,7 +540,7 @@ hazeMove::hazeMove(cv::Mat image)
 	win_size_ = 25;
 	r_ = 60;
 	eps_ = 0.001;
-	omega_ = 0.95;
+	omega_ = 0.9;	//0.95
 	tx_ = 0.1;
 }
 hazeMove::~hazeMove()
@@ -655,13 +651,10 @@ void hazeMove::TransmissionRefine()
 
 cv::Mat hazeMove::Defogging()
 {
-	//TO DO
-	//---------------------
 	dark_ = DarkChannel(src_);
 	AtmLight();
 	TransmissionEstimate();
 	TransmissionRefine();
-	//---------------------
 
 	cv::Mat dst = cv::Mat::zeros(img_h_, img_w_, CV_32FC3);
 	cv::Mat t = (cv::max)(t_, tx_);				//设置阈值当投射图t 的值很小时，会导致图像整体向白场过度

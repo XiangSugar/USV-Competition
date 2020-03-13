@@ -243,7 +243,7 @@ int mu_clr_video_proc()
 
 void haze_move_test()
 {
-	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test.jpg");
+	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test1.jpg");
 	cv::imshow("Image", image);
 	hazeMove haze_move(image);
 	cv::Mat result = haze_move.Defogging();
