@@ -4,6 +4,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "../sensors_include/vision.h"
+#include <ctime>
 
 int sgl_clr_image_proc();
 int mu_clr_image_proc();
@@ -15,15 +16,20 @@ void haze_move_test();
 
 int main()
 {
+	//clock_t start = clock();
+
 	//sgl_clr_image_proc();
 	//mu_clr_image_proc();
 	//sgl_clr_video_proc();
 	//mu_clr_video_proc();
 	//sgl_clr_image_proc_clr('H');
 	//sgl_clr_video_proc_clr('L');
+
 	haze_move_test();
+	//std::cout << "total time: " << clock() - start << std::endl;
 	
-	cv::waitKey(0);
+	//cv::waitKey(0);
+	std::cin.get();
 	return 0;
 }
 
@@ -124,7 +130,7 @@ int sgl_clr_video_proc_clr(char targetcolor)
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
-		cv::resize(srcImage, srcImage, cv::Size(1280, 720));
+		cv::resize(srcImage, srcImage, cv::Size(960, 540));
 		result = srcImage.clone();
 
 		colorDetecter color_det_video(srcImage);
@@ -168,7 +174,7 @@ int sgl_clr_video_proc()
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
-		cv::resize(srcImage, srcImage, cv::Size(1280, 720));
+		cv::resize(srcImage, srcImage, cv::Size(960, 540));
 		result = srcImage.clone();
 
 		colorDetecter color_det_video(srcImage);
@@ -211,6 +217,7 @@ int mu_clr_video_proc()
 	while (1)
 	{
 		//read a frame of the video
+		clock_t start = clock();
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
@@ -232,9 +239,13 @@ int mu_clr_video_proc()
 		else
 			std::cout << "No targert color detected!\n";
 		cv::imshow("Result", result);
-		char c = cv::waitKey(33);
+
+		std::cout << "total time: " << clock() - start << std::endl;
+		
+		char c = cv::waitKey(10);
 		if (c == 27)
 			break;
+		
 	}
 	cv::destroyWindow("Result");
 	cap.release();
@@ -243,16 +254,19 @@ int mu_clr_video_proc()
 
 void haze_move_test()
 {
-	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test1.jpg");
-	cv::imshow("Image", image);
+	clock_t start = clock();
+	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test3.jpg");
+	//cv::resize(image, image, cv::Size(960, 540));
+	//cv::imshow("Image", image);
 	hazeMove haze_move(image);
 	cv::Mat result = haze_move.Defogging();
-	haze_move.ShowA();
-	haze_move.ShowDark();
-	haze_move.ShowTe();
-	haze_move.ShowT();
+	//haze_move.ShowA();
+	//haze_move.ShowDark();
+	//haze_move.ShowTe();
+	//haze_move.ShowT();
 
-	cv::imshow("Result", result);
+	//cv::imshow("Result", result);
+	std::cout << "total time: " << clock() - start << std::endl;
 
 	cv::waitKey();
 }

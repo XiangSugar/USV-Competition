@@ -168,7 +168,10 @@ double * colorDetecter::get_mu_angle()
 {
 	double hw = img_size_.width / 2.0;
 	for (int i = 0; i < 3; i++)
-		mu_Angle_[i] = (hw - mu_Center_[i].x) / img_size_.width * horizontal_fov_;
+		if (0 == mu_Center_[i].x)
+			mu_Angle_[i] = -1000;
+		else
+			mu_Angle_[i] = (hw - mu_Center_[i].x) / img_size_.width * horizontal_fov_;
 
 	return mu_Angle_;
 }
@@ -524,7 +527,7 @@ hazeMove::hazeMove()
 	win_size_ = 15;
 	r_ = 60;
 	eps_ = 0.001;
-	omega_ = 0.95;
+	omega_ = 0.9;
 	tx_ = 0.1;
 }
 hazeMove::hazeMove(cv::Mat image)
@@ -540,7 +543,7 @@ hazeMove::hazeMove(cv::Mat image)
 	win_size_ = 25;
 	r_ = 60;
 	eps_ = 0.001;
-	omega_ = 0.9;	//0.95
+	omega_ = 0.7;	//0.95
 	tx_ = 0.1;
 }
 hazeMove::~hazeMove()
