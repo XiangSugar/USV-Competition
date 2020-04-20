@@ -1,6 +1,7 @@
 #include "../sensors_include/vision.h"
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <array>
 
 colorDetecter::colorDetecter() {}      //defualt constructor
 
@@ -10,19 +11,19 @@ colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov
 {
 	image_ = image;
 	minLen_ = minLen;
-	detectedColor_ = 'N';
 	horizontal_fov_ = horizontal_fov;
-	angle_ = 0.0;
 	img_size_ = cv::Size(image.cols, image.rows);
 	Center_ = cv::Point2f(0.0, 0.0);
 	Center1_ = cv::Point2f(0.0, 0.0);
 	Center2_ = cv::Point2f(0.0, 0.0);
 	
+	angle_ = 0.0;
 	for (int i = 0; i < 3; i++) {
 		mu_Angle_[i] = 0.0;
 		mu_Center_[i] = cv::Point2f(0.0, 0.0);
 		detected_mu_Color_[i] = 'N';
 	}
+	detectedColor_ = 'N';
 	detected_mu_Color_[3] = '\0';
 }
 
@@ -51,7 +52,7 @@ void colorDetecter::get_color_range(const char targetColor)
 	case 'R':	//red
 		minh_ = 0;
 		maxh_ = 10;
-		mins_ = 120;
+		mins_ = 130;
 		maxs_ = 255;
 		minv_ = 50;
 		maxv_ = 255;
@@ -59,7 +60,7 @@ void colorDetecter::get_color_range(const char targetColor)
 	case 'r':	//red
 		minh_ = 156;
 		maxh_ = 179;
-		mins_ = 100;
+		mins_ = 130;
 		maxs_ = 255;
 		minv_ = 50;
 		maxv_ = 255;
@@ -139,10 +140,10 @@ char  colorDetecter::get_detectedColor() const
 	return detectedColor_;
 }
 
-char * colorDetecter::get_mu_detectedColor() const
+std::array<char, 4> colorDetecter::get_mu_detectedColor() const
 {
 	//TO DO
-	return (char *)detected_mu_Color_;
+	return detected_mu_Color_;
 }
 
 double colorDetecter::get_angle(int flag)
@@ -163,11 +164,11 @@ double colorDetecter::get_angle(int flag)
 	return angle_;
 }
 
-double * colorDetecter::get_mu_angle()
+const std::array<double, 3> colorDetecter::get_mu_angle()
 {
 	double hw = img_size_.width / 2.0;
 	for (int i = 0; i < 3; i++)
-		if (0 == mu_Center_[i].x)
+		if (0.0 == mu_Center_[i].x)
 			mu_Angle_[i] = -1000;
 		else
 			mu_Angle_[i] = (hw - mu_Center_[i].x) / img_size_.width * horizontal_fov_;
@@ -201,10 +202,30 @@ void colorDetecter::get_color_mask(const char targetColor, cv::Mat & fhsv, cv::M
 }
 
 void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
-	int index, cv::Point center, float & radius) const
+	int index, cv::Point center, float & radius, const char color) const
 {
-	cv::drawContours(result, contours, index, cv::Scalar(0, 255, 0), 2, 8);
-	cv::circle(result, center, (int)radius, cv::Scalar(0, 0, 255), 1);
+	if ('H' == color)
+	{
+		cv::drawContours(result, contours, index, cv::Scalar(0, 0, 255), 1, 8);
+		cv::circle(result, center, (int)radius, cv::Scalar(0, 0, 255), 2);
+	}
+	else if ('L' == color)
+	{
+		cv::drawContours(result, contours, index, cv::Scalar(255, 0, 0), 1, 8);
+		cv::circle(result, center, (int)radius, cv::Scalar(255, 0, 0), 2);
+	}
+	else if ('B' == color)
+	{
+		cv::drawContours(result, contours, index, cv::Scalar(0, 0, 0), 1, 8);
+		cv::circle(result, center, (int)radius, cv::Scalar(0, 0, 0), 2);
+	}
+	else if ('G' == color)
+	{
+		cv::drawContours(result, contours, index, cv::Scalar(0, 255, 0), 2, 8);
+		cv::circle(result, center, (int)radius, cv::Scalar(0, 255, 0), 1);
+	}
+	else
+		std::cout << "ERROR: aim color error!" << std::endl;
 }
 
 void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
@@ -216,7 +237,7 @@ void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Po
 	cv::circle(result, (cv::Point)Center2_, (int)radius2, cv::Scalar(0, 0, 255), 1);
 }
 
-void colorDetecter::find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours,
+void colorDetecter::find_longest_contour_index(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours,
 	double & maxLen, int & index) const
 {
 	double len;
@@ -231,13 +252,37 @@ void colorDetecter::find_longest_contour(cv::Mat & mask, std::vector<std::vector
 		}
 }
 
-int colorDetecter::find_maxLen_index(double * maxlen) const
+int colorDetecter::find_maxLen_index(std::array<double, 3> &maxlen) const
 {
 	int index = 0;
 	for (int i = 0; i < 3; i++)
 		if (maxlen[i] > maxlen[index])
 			index = i;
 	return index;
+}
+
+void colorDetecter::contours_sizes_sort(std::vector<double> &contour_size, int size,
+								       std::vector<std::vector<cv::Point>> &contours) const
+{
+	std::vector<cv::Point> temp_Contour;
+	double temp_contour_size;
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = size - 1; j > i; j--)
+		{
+			if (contour_size[j] > contour_size[j - 1])
+			{
+				//for contour_size
+				temp_contour_size = contour_size[j];
+				contour_size[j] = contour_size[j - 1];
+				contour_size[j - 1] = temp_contour_size;
+				//for contours
+				temp_Contour = contours[j];
+				contours[j] = contours[j - 1];
+				contours[j - 1] = temp_Contour;
+			}
+		}
+	}
 }
 
 int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode runmode, double minLen)
@@ -264,6 +309,7 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 	cv::cvtColor(img_Blur_fhsv, img_Blur_fhsv, COLOR_BGR2HSV);
 	cv::Mat mask;
 	get_color_mask(targetColor, img_Blur_fhsv, mask);
+
 	//imshow("mask", mask);
 	
 	std::vector<std::vector<cv::Point>> contours;
@@ -291,27 +337,28 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 		}
 		else if (size > 1)
 		{
-			// sort by contour's size in descending order
+			// sort by contour's length in descending order
+			contours_sizes_sort(contour_size, size, contours);
 			// TO DO: can be replaced by a function
-			std::vector<cv::Point> temp_Contour;
-			double temp_contour_size;
-			for (int i = 0; i < size; i++)
-			{
-				for (int j = size - 1; j > i; j--)
-				{
-					if (contour_size[j] > contour_size[j - 1])
-					{
-						//for contour_size
-						temp_contour_size = contour_size[j];
-						contour_size[j] = contour_size[j - 1];
-						contour_size[j - 1] = temp_contour_size;
-						//for contours
-						temp_Contour = contours[j];
-						contours[j] = contours[j - 1];
-						contours[j - 1] = temp_Contour;
-					}
-				}
-			}
+			//std::vector<cv::Point> temp_Contour;
+			//double temp_contour_size;
+			//for (int i = 0; i < size; i++)
+			//{
+			//	for (int j = size - 1; j > i; j--)
+			//	{
+			//		if (contour_size[j] > contour_size[j - 1])
+			//		{
+			//			//for contour_size
+			//			temp_contour_size = contour_size[j];
+			//			contour_size[j] = contour_size[j - 1];
+			//			contour_size[j - 1] = temp_contour_size;
+			//			//for contours
+			//			temp_Contour = contours[j];
+			//			contours[j] = contours[j - 1];
+			//			contours[j - 1] = temp_Contour;
+			//		}
+			//	}
+			//}
 
 			if (contour_size[0] > minLen_)
 			{
@@ -326,10 +373,10 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 				detectedColor_ = targetColor;
 			}
 			else
-				state = 0;
+				state = -1;
 		}
 		else
-			state = 0;
+			state = -1;
 
 		if (DEBUG == runmode)
 		{
@@ -337,7 +384,7 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 			if (2 == state)
 				draw_result(result, contours, radius1, radius2);
 			else if (1 == state)
-				draw_result(result, contours, 0, Center1_, radius1);
+				draw_result(result, contours, 0, Center1_, radius1, targetColor);
 			else
 				;
 			//cv::imshow("result", result);
@@ -351,7 +398,7 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 	{
 		int index;
 		double maxLen = 0;
-		find_longest_contour(mask, contours, maxLen, index);
+		find_longest_contour_index(mask, contours, maxLen, index);
 		if (maxLen < minLen_)
 		{
 			detectedColor_ = 'N';	// find no target color
@@ -365,7 +412,7 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 
 			if (DEBUG == runmode)
 			{
-				draw_result(result, contours, index, Center_, radius);
+				draw_result(result, contours, index, Center_, radius, targetColor);
 				/* for debug
 				cv::imshow("mask", mask);
 				*/
@@ -405,16 +452,15 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 	cv::cvtColor(image_, fhsv, COLOR_BGR2HSV);
 
 	get_color_mask('H', fhsv, mask_H);
-	find_longest_contour(mask_H, contours_H, maxLen_H, index_H);
+	find_longest_contour_index(mask_H, contours_H, maxLen_H, index_H);
 	get_color_mask('B', fhsv, mask_B);
-	find_longest_contour(mask_B, contours_B, maxLen_B, index_B);
+	find_longest_contour_index(mask_B, contours_B, maxLen_B, index_B);
 	get_color_mask('L', fhsv, mask_L);
-	find_longest_contour(mask_L, contours_L, maxLen_L, index_L);
+	find_longest_contour_index(mask_L, contours_L, maxLen_L, index_L);
 
 	if (SGL == clrmode)
 	{
-		//可以用模板类替代，减少自己的代码量
-		double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
+		std::array<double, 3> maxlen = { maxLen_H, maxLen_B, maxLen_L };
 		index = find_maxLen_index(maxlen);
 		if (maxlen[index] < minLen_)
 		{
@@ -444,11 +490,11 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 			if (DEBUG == runmode)
 			{
 				if (0 == index)
-					draw_result(result, contours_H, index_H, Center_, radius);
+					draw_result(result, contours_H, index_H, Center_, radius, detectedColor_);
 				else if (1 == index)
-					draw_result(result, contours_B, index_B, Center_, radius);
+					draw_result(result, contours_B, index_B, Center_, radius, detectedColor_);
 				else if (2 == index)
-					draw_result(result, contours_L, index_L, Center_, radius);
+					draw_result(result, contours_L, index_L, Center_, radius, detectedColor_);
 				else
 					std::cout << "Error index!" << std::endl;
 
@@ -464,12 +510,12 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 	}
 	else if (MU == clrmode)
 	{
-		float radius_set[3] = { 0, 0, 0 };
-		std::vector<std::vector<cv::Point>> contours_set[3] = { contours_H, contours_B, contours_L };
-		double maxLen_set[3] = { maxLen_H, maxLen_B, maxLen_L };
-		int index_set[3] = { index_H, index_B, index_L };
+		std::array<std::vector<std::vector<cv::Point>>, 3> contours_set = { contours_H, contours_B, contours_L };
+		std::array<float, 3> radius_set  = { 0, 0, 0 };
+		std::array<double, 3> maxLen_set = { maxLen_H, maxLen_B, maxLen_L };
+		std::array<int, 3> index_set     = { index_H, index_B, index_L };
+		std::array<char, 3> color_set    = { 'H', 'B', 'L' };
 		int count = 0;
-		char color_set[3] = { 'H', 'B', 'L' };
 		
 		int i = 0;
 		while (i < 3)
@@ -492,7 +538,8 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 				while (i < 3)
 				{
 					if (maxLen_set[i] > minLen_)
-						draw_result(result, contours_set[i], index_set[i], mu_Center_[i], radius_set[i]);
+						draw_result(result, contours_set[i], index_set[i], mu_Center_[i],
+							radius_set[i], color_set[i]);
 					i++;
 				}
 			

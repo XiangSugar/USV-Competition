@@ -21,11 +21,11 @@ int main()
 	//sgl_clr_image_proc();
 	//mu_clr_image_proc();
 	//sgl_clr_video_proc();
-	//mu_clr_video_proc();
+	mu_clr_video_proc();
 	//sgl_clr_image_proc_clr('H');
-	//sgl_clr_video_proc_clr('L');
+	//sgl_clr_video_proc_clr('H');
 
-	haze_move_test();
+	//haze_move_test();
 	//std::cout << "total time: " << clock() - start << std::endl;
 	
 	//cv::waitKey(0);
@@ -67,8 +67,8 @@ int mu_clr_image_proc()
 
 	if (color_det_img.process_no_clr(image, colorDetecter::runMode::DEBUG, colorDetecter::clrMode::MU, 30))
 	{
-		double * angle = color_det_img.get_mu_angle();
-		char * det_color = color_det_img.get_mu_detectedColor();
+		std::array<double, 3> angle = color_det_img.get_mu_angle();
+		std::array<char, 4> det_color = color_det_img.get_mu_detectedColor();
 		for (int i = 0; i < 3; i++)
 		{
 			std::cout << "detected color: " << det_color[i] << "  ";
@@ -130,7 +130,8 @@ int sgl_clr_video_proc_clr(char targetcolor)
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
-		cv::resize(srcImage, srcImage, cv::Size(960, 540));
+		//cv::resize(srcImage, srcImage, cv::Size(960, 540));
+		//cv::resize(srcImage, srcImage, cv::Size(960, 540));
 		result = srcImage.clone();
 
 		colorDetecter color_det_video(srcImage);
@@ -174,7 +175,7 @@ int sgl_clr_video_proc()
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
-		cv::resize(srcImage, srcImage, cv::Size(960, 540));
+		//cv::resize(srcImage, srcImage, cv::Size(960, 540));
 		result = srcImage.clone();
 
 		colorDetecter color_det_video(srcImage);
@@ -221,18 +222,18 @@ int mu_clr_video_proc()
 		cap >> srcImage;
 		if (srcImage.empty())
 			break;
-		cv::resize(srcImage, srcImage, cv::Size(1280, 720));
+		//cv::resize(srcImage, srcImage, cv::Size(1280, 720));
 		result = srcImage.clone();
 
 		colorDetecter color_det_video(srcImage);
 		if (color_det_video.process_no_clr(result, colorDetecter::runMode::DEBUG, colorDetecter::clrMode::MU, 30))
 		{
-			double * angle = color_det_video.get_mu_angle();
-			char * det_color = color_det_video.get_mu_detectedColor();
+			std::array<double, 3> angle = color_det_video.get_mu_angle();
+			std::array<char, 4> det_color = color_det_video.get_mu_detectedColor();
 			for (int i = 0; i < 3; i++)
 			{
 				std::cout << "detected color: " << det_color[i] << "  ";
-				std::cout << "angle = " << angle[i] << "  ";
+				std::cout << "angle = " << angle[i] << ",\t";
 			}
 			std::cout << std::endl;
 		}

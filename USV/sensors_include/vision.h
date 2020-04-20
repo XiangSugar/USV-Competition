@@ -1,6 +1,7 @@
 #ifndef COLORDETECTER_H_
 #define COLORDETECTER_H_
 #include <iostream>
+#include <array>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2\imgproc\types_c.h>
@@ -11,17 +12,17 @@ class colorDetecter
 {
 private:
 	cv::Mat image_;
+	cv::Size img_size_;
 	char detectedColor_;
-	char detected_mu_Color_[4];
+	std::array<char, 4> detected_mu_Color_;
+	double angle_;
+	std::array<double, 3> mu_Angle_;
 	double minLen_;
 	//color range
 	int minh_, maxh_;
 	int mins_, maxs_;
 	int minv_, maxv_;
 	double horizontal_fov_;
-	double angle_;
-	double mu_Angle_[3];
-	cv::Size img_size_;
 
 	//  Center_ will be calculated in the process function without targetColor param
 	cv::Point2f Center_;
@@ -31,7 +32,7 @@ private:
 	cv::Point2f Center1_;
 	cv::Point2f Center2_;
 	//for MU colMode
-	cv::Point2f mu_Center_[3];
+	std::array<cv::Point2f, 3> mu_Center_;
 public:
 	enum runMode {DEBUG, RELEASE};
 	enum clrMode {SGL, MU};
@@ -45,15 +46,17 @@ private:
 	void get_color_mask(const char targetColor, cv::Mat & fhsv, cv::Mat & mask);
 
 	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, int index,
-		cv::Point center, float & radius) const;
+		cv::Point center, float & radius, const char color) const;
 	// overload
 	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, float & radius1,
 		float & radius2) const;
 
-	void find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours, double & maxLen,
+	void find_longest_contour_index(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours, double & maxLen,
 		int & index) const;
 
-	int find_maxLen_index(double * maxlen) const;
+	int find_maxLen_index(std::array<double, 3> &maxlen) const;
+	void contours_sizes_sort(std::vector<double> &contour_size, int size,
+							std::vector<std::vector<cv::Point>> &contours) const;
 
 public:
 	colorDetecter();        //defualt constructor
@@ -76,13 +79,13 @@ public:
 	 */
 	char get_detectedColor() const;
 
-	char * get_mu_detectedColor() const;
+	std::array<char, 4> get_mu_detectedColor() const;
 
 	/**
 	 *  @brief  Get the orientation information of the target color
 	 */
 	double get_angle(int flag = 0);
-	double * get_mu_angle();
+	const std::array<double, 3> get_mu_angle();
 
 	//void equalizeHist_clr(cv::Mat image);
 	
