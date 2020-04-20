@@ -14,6 +14,7 @@ private:
 	char detectedColor_;
 	char detected_mu_Color_[4];
 	double minLen_;
+	//color range
 	int minh_, maxh_;
 	int mins_, maxs_;
 	int minv_, maxv_;
@@ -36,33 +37,34 @@ public:
 	enum clrMode {SGL, MU};
 
 private:
-	void get_color_range(char targetColor);
+	void get_color_range(const char targetColor);
 
 	/**
 	 *  @brief get mask of the target color
 	 */
-	void get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask);
+	void get_color_mask(const char targetColor, cv::Mat & fhsv, cv::Mat & mask);
 
 	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, int index,
-		cv::Point center, float & radius);
+		cv::Point center, float & radius) const;
 	// overload
 	void draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours, float & radius1,
-		float & radius2);
+		float & radius2) const;
 
 	void find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours, double & maxLen,
-		int & index);
+		int & index) const;
 
-	int find_maxLen_index(double * maxlen);
+	int find_maxLen_index(double * maxlen) const;
 
 public:
 	colorDetecter();        //defualt constructor
 
 	colorDetecter(cv::Mat image, double minLen = 80, double horizontal_fov = 90);
+	~colorDetecter();
 
 	/**
 	 *  @brief  Help you query the color information corresponding to the character
 	 */
-	void helpText();
+	void helpText() const;
 
 	/**
 	 *  @brief  set the horizontal fov of the camera
@@ -105,7 +107,7 @@ public:
 	 *  @param  runmode: release  debug
 	 *  @param  minLen: The minimum value of the target color's perimeter
 	 */
-	int process_clr(char targetColor, cv::Mat & result, runMode runmode = RELEASE, double minLen = 50);
+	int process_clr(const char targetColor, cv::Mat & result, runMode runmode = RELEASE, double minLen = 50);
 
 	/**
 	 *  @brief  overload function: detect red¡¢blue and black at the same time.The biggest one will
@@ -150,7 +152,7 @@ private:
 	/**
 		@brief  get the dark channel of an image
 	 */
-	cv::Mat DarkChannel(cv::Mat img) const;
+	cv::Mat DarkChannel(cv::Mat &img) const;
 
 	/**
 		@brief  Calculating the atmospheric light intensity of an image(outA_[3])
@@ -181,16 +183,16 @@ public:
 		most representative classic defogging algorithm proposed by He Kaiming
 	 */
 	cv::Mat Defogging();
-	void ShowDark() { 
+	void ShowDark() const { 
 		cv::imshow("Dark", dark_);
 	};
-	void ShowTe() { 
+	void ShowTe() const { 
 		cv::imshow("te", te_);
 	};
-	void ShowT() { 
+	void ShowT() const { 
 		cv::imshow("t", t_);
 	};
-	void ShowA() { 
+	void ShowA() const { 
 		std::cout << outA_[0] << " " << outA_[1] << " " << outA_[2] << std::endl;
 	};
 	void SetParam(int win_size, int r, float eps, float omega, float tx);

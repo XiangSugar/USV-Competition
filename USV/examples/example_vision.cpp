@@ -254,19 +254,19 @@ int mu_clr_video_proc()
 
 void haze_move_test()
 {
-	clock_t start = clock();
-	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test3.jpg");
+	cv::Mat image = cv::imread("E:\\Code library\\USV-Competition\\USV\\test_materials\\defog_test2.jpg");
 	//cv::resize(image, image, cv::Size(960, 540));
-	//cv::imshow("Image", image);
+	cv::imshow("Image", image);
+	clock_t start = clock();
 	hazeMove haze_move(image);
 	cv::Mat result = haze_move.Defogging();
+	std::cout << "total time: " << clock() - start << std::endl;
 	//haze_move.ShowA();
 	//haze_move.ShowDark();
 	//haze_move.ShowTe();
-	//haze_move.ShowT();
+	haze_move.ShowT();
 
-	//cv::imshow("Result", result);
-	std::cout << "total time: " << clock() - start << std::endl;
+	cv::imshow("Result", result);
 
 	cv::waitKey();
 }

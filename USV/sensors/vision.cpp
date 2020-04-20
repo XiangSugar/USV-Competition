@@ -2,10 +2,9 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-colorDetecter::colorDetecter()       //defualt constructor
-{
+colorDetecter::colorDetecter() {}      //defualt constructor
 
-}
+colorDetecter::~colorDetecter() {}
 
 colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov)
 {
@@ -27,7 +26,7 @@ colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov
 	detected_mu_Color_[3] = '\0';
 }
 
-void colorDetecter::get_color_range(char targetColor)
+void colorDetecter::get_color_range(const char targetColor)
 {
 	using std::cout;
 	using std::endl;
@@ -111,7 +110,7 @@ void colorDetecter::get_color_range(char targetColor)
 	}
 }
 
-void colorDetecter::helpText()
+void colorDetecter::helpText() const
 {
 	using std::cout;
 
@@ -179,7 +178,7 @@ double * colorDetecter::get_mu_angle()
 //void colorDetecter::equalizeHist_clr(cv::Mat image)
 //{}
 
-void colorDetecter::get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & mask)
+void colorDetecter::get_color_mask(const char targetColor, cv::Mat & fhsv, cv::Mat & mask)
 {
 	if ('H' == targetColor)
 	{
@@ -202,14 +201,14 @@ void colorDetecter::get_color_mask(char targetColor, cv::Mat & fhsv, cv::Mat & m
 }
 
 void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
-	int index, cv::Point center, float & radius)
+	int index, cv::Point center, float & radius) const
 {
 	cv::drawContours(result, contours, index, cv::Scalar(0, 255, 0), 2, 8);
 	cv::circle(result, center, (int)radius, cv::Scalar(0, 0, 255), 1);
 }
 
 void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Point>> & contours,
-	float & radius1, float & radius2)
+	float & radius1, float & radius2) const
 {
 	cv::drawContours(result, contours, 0, cv::Scalar(0, 255, 0), 2, 8);
 	cv::circle(result, (cv::Point)Center1_, (int)radius1, cv::Scalar(0, 0, 255), 1);
@@ -218,7 +217,7 @@ void colorDetecter::draw_result(cv::Mat & result, std::vector<std::vector<cv::Po
 }
 
 void colorDetecter::find_longest_contour(cv::Mat & mask, std::vector<std::vector<cv::Point>> & contours,
-	double & maxLen, int & index)
+	double & maxLen, int & index) const
 {
 	double len;
 	cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
@@ -232,7 +231,7 @@ void colorDetecter::find_longest_contour(cv::Mat & mask, std::vector<std::vector
 		}
 }
 
-int colorDetecter::find_maxLen_index(double * maxlen)
+int colorDetecter::find_maxLen_index(double * maxlen) const
 {
 	int index = 0;
 	for (int i = 0; i < 3; i++)
@@ -241,7 +240,7 @@ int colorDetecter::find_maxLen_index(double * maxlen)
 	return index;
 }
 
-int colorDetecter::process_clr(char targetColor, cv::Mat & result, runMode runmode, double minLen)
+int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode runmode, double minLen)
 {
 	using namespace cv;
 	int state = 0;
@@ -259,12 +258,12 @@ int colorDetecter::process_clr(char targetColor, cv::Mat & result, runMode runmo
 	else
 		minLen_ = minLen;
 
-	cv::Mat img_Blur;
-	cv::GaussianBlur(image_, img_Blur, cv::Size(3, 3), 0, 0);
-	cv::Mat fhsv;
-	cv::cvtColor(img_Blur, fhsv, COLOR_BGR2HSV);
+	cv::Mat img_Blur_fhsv;
+	cv::GaussianBlur(image_, img_Blur_fhsv, cv::Size(3, 3), 0, 0);
+	//cv::Mat fhsv;
+	cv::cvtColor(img_Blur_fhsv, img_Blur_fhsv, COLOR_BGR2HSV);
 	cv::Mat mask;
-	get_color_mask(targetColor, fhsv, mask);
+	get_color_mask(targetColor, img_Blur_fhsv, mask);
 	//imshow("mask", mask);
 	
 	std::vector<std::vector<cv::Point>> contours;
@@ -403,7 +402,7 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 	std::vector<std::vector<cv::Point>> contours_H;
 	std::vector<std::vector<cv::Point>> contours_B;
 	std::vector<std::vector<cv::Point>> contours_L;
-	cvtColor(image_, fhsv, COLOR_BGR2HSV);
+	cv::cvtColor(image_, fhsv, COLOR_BGR2HSV);
 
 	get_color_mask('H', fhsv, mask_H);
 	find_longest_contour(mask_H, contours_H, maxLen_H, index_H);
@@ -414,6 +413,7 @@ int colorDetecter::process_no_clr(cv::Mat & result, runMode runmode, clrMode clr
 
 	if (SGL == clrmode)
 	{
+		//可以用模板类替代，减少自己的代码量
 		double maxlen[3] = { maxLen_H, maxLen_B, maxLen_L };
 		index = find_maxLen_index(maxlen);
 		if (maxlen[index] < minLen_)
@@ -527,7 +527,7 @@ hazeMove::hazeMove()
 	win_size_ = 15;
 	r_ = 60;
 	eps_ = 0.001;
-	omega_ = 0.9;
+	omega_ = 0.95;
 	tx_ = 0.1;
 }
 hazeMove::hazeMove(cv::Mat image)
@@ -543,7 +543,7 @@ hazeMove::hazeMove(cv::Mat image)
 	win_size_ = 25;
 	r_ = 60;
 	eps_ = 0.001;
-	omega_ = 0.7;	//0.95
+	omega_ = 0.95;	//0.95
 	tx_ = 0.1;
 }
 hazeMove::~hazeMove()
@@ -564,7 +564,7 @@ std::vector<int> hazeMove::argsort(const std::vector<T>& array)
 	return array_index;
 }
 
-cv::Mat hazeMove::DarkChannel(cv::Mat img) const
+cv::Mat hazeMove::DarkChannel(cv::Mat &img) const
 {
 	std::vector<cv::Mat> chanels(3);
 	split(img, chanels);
@@ -623,6 +623,9 @@ void hazeMove::TransmissionEstimate()
 
 cv::Mat hazeMove::Guidedfilter(cv::Mat img_guid, cv::Mat te, int r, float eps) const
 {
+	cv::resize(img_guid, img_guid, cv::Size(320,180));
+	cv::resize(te, te, cv::Size(320,180));
+
 	cv::Mat meanI, meanT, meanIT, meanII, meanA, meanB;
 	cv::boxFilter(img_guid, meanI, CV_32F, cv::Size(r, r));
 	cv::boxFilter(te, meanT, CV_32F, cv::Size(r, r));
@@ -638,6 +641,8 @@ cv::Mat hazeMove::Guidedfilter(cv::Mat img_guid, cv::Mat te, int r, float eps) c
 	boxFilter(b, meanB, CV_32F, cv::Size(r, r));
 
 	cv::Mat t = meanA.mul(img_guid) + meanB;
+
+	cv::resize(t, t, cv::Size(img_w_, img_h_));
 
 	return t;
 }
