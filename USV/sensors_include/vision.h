@@ -64,6 +64,8 @@ public:
 	colorDetecter(cv::Mat image, double minLen = 80, double horizontal_fov = 90);
 	~colorDetecter();
 
+	void update_frame(cv::Mat &img);
+
 	/**
 	 *  @brief  Help you query the color information corresponding to the character
 	 */

@@ -18,12 +18,18 @@
     <ClInclude Include="sensors_include\vision.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="sensors_include\vision_yolo.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sensors\vision.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="examples\example_vision.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="sensors\vision_yolo.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
