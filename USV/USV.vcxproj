@@ -118,10 +118,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="sensors_include\vision.h" />
+    <ClInclude Include="sensors_include\vision_yolo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="examples\example_vision.cpp" />
     <ClCompile Include="sensors\vision.cpp" />
+    <ClCompile Include="sensors\vision_yolo.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

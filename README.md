@@ -1,6 +1,8 @@
 # USV-Competition
 
-This is a project about Zhuhai Wanshan International Smart Boat Open Event.
+
+
+This is a project about Zhuhai Wanshan International Smart Boat Open Event(IIVC). The code in this repository is for the vision module.
 
 
 
@@ -46,20 +48,16 @@ $$
 
 举几个例子：
 
-![](https://raw.githubusercontent.com/XiangSugar/USV-Competition/master/USV/pictures/image_dark1.jpg)
+![](USV/pictures/image_dark1.jpg)
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/image_dark2.jpg?raw=true)
+![](USV/pictures/image_dark2.jpg)
 
 而对于有雾的图像，其暗通道要明显泛白：
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/image_dark3.jpg?raw=true)
+![](USV/pictures/image_dark3.jpg)
 
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_dark.jpg?raw=true)
-
-
-
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog1.jpg?raw=true)
+![](USV/pictures/defog_dark.jpg)
 
 由上述几幅图像，可以明显的看到暗通道先验理论的普遍性。在作者的论文中，统计了5000多副图像的特征，也都基本符合这个先验，因此，我们可以认为其是一条定理。
 
@@ -159,43 +157,21 @@ $$
    	vector<int> indices = argsort(darkVector);
    	vector<int> dstIndices(indices.begin() + (imgSize - numpx), indices.end());
    
-   	/*
-   	vector<Mat> chanels(3);
-   	split(src, chanels);
-   	vector<int> BCHVector = chanels[0].reshape(1, imgSize);
-   	vector<int> GCHVector = chanels[1].reshape(1, imgSize);
-   	vector<int> RCHVector = chanels[2].reshape(1, imgSize);
-   
-   	for (int i = 0; i < numpx; i++)
-   	{
-   		outA[0] += BCHVector[i];
-   		outA[1] += GCHVector[i];
-   		outA[2] += RCHVector[i];
-   	}
-   	*/
-   
    	for (int i = 0; i < numpx; ++i)
    	{
    		outA[0] += srcVector.at<Vec3f>(dstIndices[i], 0)[0];
    		outA[1] += srcVector.at<Vec3f>(dstIndices[i], 0)[1];
    		outA[2] += srcVector.at<Vec3f>(dstIndices[i], 0)[2];
    	}
-   	
-   	/*
-   	outA[0] = outA[0] / numpx;
-   	outA[1] = outA[1] / numpx;
-   	outA[2] = outA[2] / numpx;
-   	*/
-   	
        //此处的最大值限制将在后面说明
    	outA[0] = min(outA[0] / numpx, float(230.0));
    	outA[1] = min(outA[1] / numpx, float(230.0));
    	outA[2] = min(outA[2] / numpx, float(230.0));
    }
    ```
-
    
-
+   
+   
 3. **计算透射率 $t(\mathbf{x})$的预估值：**参数 `omega` 具有着明显的意义，其值越小，去雾效果越不明显
 
    ```C++
@@ -210,28 +186,15 @@ $$
    	for (int i = 0; i < 3; ++i)
    		chanels[i] = chanels[i] / outA[i];
    
-   	/*
-   	for (int j = 0; j < imgClone.rows; j++)
-   	{
-   		for (int i = 0; i < imgClone.cols; i++)
-   		{
-   			imgClone.at<Vec3f>(j, i)[0] = min(imgClone.at<Vec3f>(j, i)[0] / outA[0], float(1.0));
-   			imgClone.at<Vec3f>(j, i)[1] = min(imgClone.at<Vec3f>(j, i)[1] / outA[1], float(1.0));
-   			imgClone.at<Vec3f>(j, i)[2] = min(imgClone.at<Vec3f>(j, i)[2] / outA[2], float(1.0));
-   		}
-   	}
-   	*/
-       
-   	//TO DO
        //可优化
    	merge(chanels, imgA);
    	Mat transmission = 1 - omega * DarkChannel(imgA, size);	//计算透射率预估值
    	return transmission;
    }
    ```
-
    
-
+   
+   
 4. **去雾**
 
    ```C++
@@ -248,28 +211,11 @@ $$
    	for (int i = 0; i < 3; ++i)
    		chanels[i] = (chanels[i] - outA[i]) / t + outA[i];
    	merge(chanels, dst);
-   	/*
-   	for (int j = 0; j < srcImg.rows; j++)
-   	{
-   		for (int i = 0; i < srcImg.cols; i++)
-   		{
-   			srcImg.at<Vec3f>(j, i)[0] = saturate_cast<uchar>(
-   				(srcImg.at<Vec3f>(j, i)[0]-outA[0]) / (0.001 + t.at<Vec3f>(j, i)[0])+outA[0]
-   				);
-   			srcImg.at<Vec3f>(j, i)[1] = saturate_cast<uchar>(
-   				(srcImg.at<Vec3f>(j, i)[1]-outA[1]) / (0.001 + t.at<Vec3f>(j, i)[1])+outA[1]
-   				);
-   		    srcImg.at<Vec3f>(j, i)[2] = saturate_cast<uchar>(
-   				(srcImg.at<Vec3f>(j, i)[2]-outA[2]) / (0.001 + t.at<Vec3f>(j, i)[1]) + outA[2]
-   				);
-   		}
-   	}
-   	*/
    	dst.convertTo(dst, CV_8UC3);
    	return dst;
    }
    ```
-
+   
    
 
 ### 4. 实验结果及说明
@@ -278,21 +224,22 @@ $$
 
 基于以上内容，就可以做到不错的去雾效果了。首先来看看暗通道：
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_dark.jpg?raw=true)
+![](USV/pictures/defog_dark.jpg)
 
 右侧是暗通道图，可以看到明显偏白、发灰，典型的有雾图像特征。下面做去雾处理：
 
-![](https://raw.githubusercontent.com/XiangSugar/USV-Competition/master/USV/pictures/defog_te_r1.jpg)
+![](USV/pictures/defog_te_r1.jpg)
 
 右侧是通过 $t(\mathbf{x})$ 的估计值进行去雾的效果，能够看出效果还是很显著的。但是仔细看，局部地方会有小瑕疵。上图由于原图纹理比较多，表现得不够明显，但是下图（右）可以很直观看到不完美的地方，图像边缘或者轮廓处过度很突兀，不自然，这显然不是期望的结果。
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_te_r2.jpg?raw=true)
+![](USV/pictures/defog_te_r2.jpg)
 
 究其原因，是因为我们只是用了 $t(\mathbf{x})$ 的估计值进行去雾，这显然和真实情况会有差距，可以看到 $t(\mathbf{x})$ 的估计图是非常粗糙的（下图为上面小树林的预估透射率图）。
 
-<img src="https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/te.jpg?raw=true" style="zoom:80%;" />
 
-
+<div style="text-align: center; zoom:60%">
+	<img src="USV/pictures/te.jpg" alt="">
+</div>
 
 #### 4.2 结合导向滤波的优化
 
@@ -336,35 +283,38 @@ Mat TransmissionRefine(Mat src, Mat te, int r, float eps)
 
 通过导向滤波得到精细的透射率图（下方右侧图），将在去雾时得到更细腻的效果。
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_te_t.jpg?raw=true)
+![](USV/pictures/defog_te_t.jpg)
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_te_t_2.jpg?raw=true)
+![](USV/pictures/defog_te_t_2.jpg)
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_te_t_r1.jpg?raw=true)
+![](USV/pictures/defog_te_t_r1.jpg)
 
 下图为上面这张图计算出来的全球大气光强值（分别为B、G、R通道）：
 
-<img src="https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/value_A.jpg?raw=true" style="zoom:80%;" />
+<div style="text-align: center; zoom:80%">
+	<img src="USV/pictures/value_A.jpg" alt="">
+</div>
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_te_t_r2.png?raw=true)
+
+![](USV/pictures/defog_te_t_r2.png)
 
 #### 4.3 部分参数的说明
 
 前面说到，`omega`参数决定了去雾的程度，值越大，效果越强，这里可以通过实验进行直观对比。
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_omega.jpg?raw=true)
+![](USV/pictures/defog_omega.jpg)
 
 此外，原始论文中的 $A$ 最终是取原始像素中的某一个点的像素，我这里参考了网上博客上面的内容，实际上是取的符合条件的所有点的平均值作为 $A$ 的值，这样做是因为，如果是取一个点，则各通道的 $A$ 值很有可能全部很接近255，这样的话会造成处理后的图像偏色和出现大量色斑。原文作者说这个算法对天空部分不需特别处理，但实际发现该算法对有天空的图像的效果一般都不是太好好，天空会出现明显的过渡区域或者偏色的色斑。作为解决方案，在代码中增加了一个参数，最大全球大气光值，当计算的值大于该值时，就取该值代替。通过下图可以看出，取230的时候效果是比较平衡的，这个根据实际场景可以做调整。
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog_A.jpg?raw=true)
+![](USV/pictures/defog_A.jpg)
 
 另外，关于导向滤波中的导向半径值 `r` ，因为在前面进行最小值滤波后暗通道的图像成一块一块的，为了使透射率图更加精细，建议这个 半径的取值不小于进行最小值滤波的半径的**4倍**。
 
 #### 4.4 一些其他测试图
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog2.jpg?raw=true)
+![](USV/pictures/defog2.jpg)
 
-![](https://github.com/XiangSugar/USV-Competition/blob/master/USV/pictures/defog3.jpg?raw=true)
+![](USV/pictures/defog3.jpg)
 
 #### 4.5 封装类
 
@@ -450,14 +400,36 @@ public:
 
 
 
-## 5. 其他
+### 5. 其他
 
 由于算法有太多的浮点运算，目前在我自己的笔记本电脑平台（i5-8250U）上，对于一副 $1280\times720$ 的图片，去雾操作耗时平均为180ms，还不能满足实时性要求，后续会对速度方面进行优化。
 
 
 
-## 参考文献：
+### 参考文献：
 
 [1]  Kaiming He, Jian Sun, Fellow, etc. Single Image Haze Removal Using Dark Channel Prior[J]. IEEE Transactions on Pattern Analysis & Machine Intelligence, 2011, 33(12):2341-2353.
 
 [2]  Kaiming He, Jian Sun, Xiaoou Tang. Guided Image Filtering[J]. IEEE Transactions on Pattern Analysis & Machine Intelligence, 2013, 35(6):1397-1409.
+
+
+
+## 第三部分：yolov4-tiny 目标检测算法的应用
+
+### 1. yolo算法简介
+
+### 2. pytorch 平台使用yolo训练自己的数据
+
+#### 2.1 数据集的制作
+
+#### 2.2 `.cfg` 文件的修改
+
+#### 2.3 训练方法及参数说明
+
+#### 2.4 其他说明
+
+### 3. 利用OpenCV部署训练好的模型
+
+#### 3.1 前提
+
+#### 3.2 部署并测试

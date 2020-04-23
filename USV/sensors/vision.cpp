@@ -3,7 +3,23 @@
 #include <opencv2/opencv.hpp>
 #include <array>
 
-colorDetecter::colorDetecter() {}      //defualt constructor
+colorDetecter::colorDetecter()      //defualt constructor
+{
+	minLen_ = 30;;
+	horizontal_fov_ = 90;
+	Center_ = cv::Point2f(0.0, 0.0);
+	Center1_ = cv::Point2f(0.0, 0.0);
+	Center2_ = cv::Point2f(0.0, 0.0);
+
+	angle_ = 0.0;
+	for (int i = 0; i < 3; i++) {
+		mu_Angle_[i] = 0.0;
+		mu_Center_[i] = cv::Point2f(0.0, 0.0);
+		detected_mu_Color_[i] = 'N';
+	}
+	detectedColor_ = 'N';
+	detected_mu_Color_[3] = '\0';
+}
 
 colorDetecter::~colorDetecter() {}
 
@@ -20,6 +36,22 @@ colorDetecter::colorDetecter(cv::Mat image, double minLen, double horizontal_fov
 	angle_ = 0.0;
 	for (int i = 0; i < 3; i++) {
 		mu_Angle_[i] = 0.0;
+		mu_Center_[i] = cv::Point2f(0.0, 0.0);
+		detected_mu_Color_[i] = 'N';
+	}
+	detectedColor_ = 'N';
+	detected_mu_Color_[3] = '\0';
+}
+
+void colorDetecter::update_frame(cv::Mat &img)
+{
+	image_ = img;
+	img_size_ = cv::Size(image_.cols, image_.rows);
+	Center_ = cv::Point2f(0.0, 0.0);
+	Center1_ = cv::Point2f(0.0, 0.0);
+	Center2_ = cv::Point2f(0.0, 0.0);
+
+	for (int i = 0; i < 3; i++) {
 		mu_Center_[i] = cv::Point2f(0.0, 0.0);
 		detected_mu_Color_[i] = 'N';
 	}
@@ -339,26 +371,6 @@ int colorDetecter::process_clr(const char targetColor, cv::Mat & result, runMode
 		{
 			// sort by contour's length in descending order
 			contours_sizes_sort(contour_size, size, contours);
-			// TO DO: can be replaced by a function
-			//std::vector<cv::Point> temp_Contour;
-			//double temp_contour_size;
-			//for (int i = 0; i < size; i++)
-			//{
-			//	for (int j = size - 1; j > i; j--)
-			//	{
-			//		if (contour_size[j] > contour_size[j - 1])
-			//		{
-			//			//for contour_size
-			//			temp_contour_size = contour_size[j];
-			//			contour_size[j] = contour_size[j - 1];
-			//			contour_size[j - 1] = temp_contour_size;
-			//			//for contours
-			//			temp_Contour = contours[j];
-			//			contours[j] = contours[j - 1];
-			//			contours[j - 1] = temp_Contour;
-			//		}
-			//	}
-			//}
 
 			if (contour_size[0] > minLen_)
 			{

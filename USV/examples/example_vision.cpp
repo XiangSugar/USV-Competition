@@ -4,6 +4,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "../sensors_include/vision.h"
+#include "../sensors_include/vision_yolo.h"
 #include <ctime>
 
 int sgl_clr_image_proc();
@@ -12,6 +13,7 @@ int sgl_clr_video_proc();
 int mu_clr_video_proc();
 int sgl_clr_video_proc_clr(char targetcolor);
 int sgl_clr_image_proc_clr(char targetcolor);
+int sgl_clr_video_proc_yolo();
 void haze_move_test();
 
 int main()
@@ -21,9 +23,10 @@ int main()
 	//sgl_clr_image_proc();
 	//mu_clr_image_proc();
 	//sgl_clr_video_proc();
-	mu_clr_video_proc();
+	//mu_clr_video_proc();
 	//sgl_clr_image_proc_clr('H');
-	//sgl_clr_video_proc_clr('H');
+	//sgl_clr_video_proc_clr('B');
+	sgl_clr_video_proc_yolo();
 
 	//haze_move_test();
 	//std::cout << "total time: " << clock() - start << std::endl;
@@ -214,6 +217,7 @@ int mu_clr_video_proc()
 		std::cout << "Error opening video file£º" << videoPath << std::endl;
 		return -1;
 	}
+	colorDetecter color_det_video;
 
 	while (1)
 	{
@@ -225,7 +229,8 @@ int mu_clr_video_proc()
 		//cv::resize(srcImage, srcImage, cv::Size(1280, 720));
 		result = srcImage.clone();
 
-		colorDetecter color_det_video(srcImage);
+		//colorDetecter color_det_video(srcImage);
+		color_det_video.update_frame(srcImage);
 		if (color_det_video.process_no_clr(result, colorDetecter::runMode::DEBUG, colorDetecter::clrMode::MU, 30))
 		{
 			std::array<double, 3> angle = color_det_video.get_mu_angle();
@@ -247,6 +252,58 @@ int mu_clr_video_proc()
 		if (c == 27)
 			break;
 		
+	}
+	cv::destroyWindow("Result");
+	cap.release();
+	return 0;
+}
+
+int sgl_clr_video_proc_yolo()
+{
+	std::string videoPath = "E:\\Code library\\USV-Competition\\USV\\test_materials\\video.mp4";
+	cv::Mat frame;
+	//cv::Mat result;
+	cv::namedWindow("Result");
+
+	cv::VideoCapture cap(videoPath);
+	if (!cap.isOpened())
+	{
+		std::cout << "Error opening video file£º" << videoPath << std::endl;
+		return -1;
+	}
+	cap >> frame;
+	int img_width = frame.cols;
+	string modCfg = "E:/Code library/USV-Competition/USV/cfg_weights/yolov4-tiny.cfg";
+	string modWg = "E:/Code library/USV-Competition/USV/cfg_weights/yolov4-tiny.weights";
+	string clsFile = "E:/Code library/USV-Competition/USV/cfg_weights/classes.names";
+	yoloDetector ball_det_video;
+	ball_det_video.net_configration(modCfg, modWg, clsFile);
+	while (1)
+	{
+		cap >> frame;
+		if (frame.empty())
+			break;
+		ball_det_video.update();
+		int num_det;
+		if (num_det = ball_det_video.process(frame, yoloDetector::DEBUG))
+		{
+			cout << num_det << "\t";
+			int idx;
+			double angle;
+			//char ball_det;
+			//ball_det_video.get_nearest_ball(idx, ball_det);
+			if (ball_det_video.get_target_ball('L', idx))
+			{
+				angle = ball_det_video.get_angle(idx, img_width);
+				cout << angle << endl;
+			}
+			//cout << ball_det << '\t' << angle << endl;
+			
+		}
+		cv::imshow("Result", frame);
+		char c = cv::waitKey(33);
+		if (c == 27)
+			break;
 	}
 	cv::destroyWindow("Result");
 	cap.release();
