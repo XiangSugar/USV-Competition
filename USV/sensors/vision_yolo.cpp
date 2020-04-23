@@ -1,13 +1,11 @@
 #include "../sensors_include/vision_yolo.h"
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
-//#include <opencv2/highgui.hpp>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 
 using namespace cv::dnn;
-using namespace cv;
 
 yoloDetector::yoloDetector()
 {
